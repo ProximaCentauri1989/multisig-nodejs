@@ -8,7 +8,7 @@ class SignerValidator {
      * Generates batch of signatures for each version
      *
      * @typedef {object} options
-     * @property {number} timestamp - Timestamp of the header. Defaults to Date.now()
+     * @property {number} timestamp - Timestamp of the signature. Defaults to Date.now()
      * @property {string} payload - stringified JSON body
      * @property {string} secret - signing key
      * @property {string} version - crypto provider version
