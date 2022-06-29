@@ -8,12 +8,12 @@ class SignerValidator {
      * Generates batch of signatures for each version
      *
      * @typedef {object} options
-     * @property {number} timestamp - Timestamp of the signature. Defaults to Date.now()
+     * @property {number} timestamp - timestamp of the signature. Defaults to Date.now()
      * @property {string} payload - stringified JSON body
      * @property {string} secret - signing key
      * @property {string} version - crypto provider version
-     * @property {string} signature - Computed signature
-     * Responds with multisignature string
+     * @property {string} signature - computed signature
+     * @returns multisignature string
     */
     sign(payload, secret, options) {
       if (typeof payload === 'object') {
@@ -52,11 +52,11 @@ class SignerValidator {
      * Parses signature from batch and validates for certain version
      *
      * @typedef {object} options
-     * @property {number} treshold - Allowed age for signature
+     * @property {number} treshold - allowed age for signature
      * @property {string} payload - stringified JSON body
      * @property {string} secret - signing key
      * @property {string} version - crypto provider version
-     * @property {string} signature - Computed signature
+     * @property {string} signature - computed signature
      * @returns parsed JSON payload if signature is valid
     */
     validate(payload, signature, secret, options) {
