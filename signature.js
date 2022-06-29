@@ -19,7 +19,7 @@ class SignerValidator {
       if (typeof payload === 'object') {
         payload = JSON.stringify(payload);
       } else if (typeof payload !== 'string') {
-        throw new Error(`Unable to sign payload. JSON or raw string reuired ${v}`);
+        throw new Error(`Unable to sign payload. JSON or raw string required ${v}`);
       }
 
       if (!options || !options.versions) {
