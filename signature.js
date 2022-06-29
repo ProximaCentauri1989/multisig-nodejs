@@ -1,0 +1,149 @@
+const { OPTIONS } = require('./constants');
+const  ProviderFactory  = require('./provider-factory');
+
+
+class SignerValidator {
+
+    /**
+     * Generates batch of signatures for each version
+     *
+     * @typedef {object} options
+     * @property {number} timestamp - Timestamp of the header. Defaults to Date.now()
+     * @property {string} payload - stringified JSON body
+     * @property {string} secret - signing key
+     * @property {string} version - crypto provider version
+     * @property {string} signature - Computed signature
+     * Responds with multisignature string
+    */
+    sign(payload, secret, options) {
+      if (!options || !options.versions) {
+        console.log(`Using default crypto provider for ${OPTIONS.DEFAULT_VERSION} version`)
+      }
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const versions = options.versions || [OPTIONS.DEFAULT_VERSION];
+
+      let signatures = [];
+      versions.forEach(v => {
+        const provider = getProvider(v);
+        if (!provider) {
+            throw new Error({
+                message: `Unable to load crypto provider for version ${v}`,
+            });
+        }
+
+        const hash = provider.compute(
+            timestamp + '.' + payload,
+            secret
+        );
+
+        signatures.push(v + '=' + hash);
+      });
+
+      signatures.push('timestamp=' + timestamp);
+      return signatures.join(',');
+    };
+
+    /**
+     * Parses signature from batch and validates for certain version
+     *
+     * @typedef {object} options
+     * @property {number} treshold - Allowed age for signature
+     * @property {string} payload - stringified JSON body
+     * @property {string} secret - signing key
+     * @property {string} version - crypto provider version
+     * @property {string} signature - Computed signature
+     * @returns parsed JSON payload if signature is valid
+    */
+    validate(payload, signature, secret, options) {
+      if (!options || !options.version) {
+        console.log(`Using default crypto provider for ${OPTIONS.DEFAULT_VERSION} version`)
+      }
+
+      validSignatureFailOnInvalid(
+        payload,
+        signature,
+        secret,
+        options.treshold,
+        options.version,
+      )
+
+      return JSON.parse(payload);
+    }
+}
+
+/**
+ * 
+ * Helpers:
+ * getProvider - returns crypto provider for version
+ * parseSignature - parses signature from multisig string
+ * validSignatureFailOnInvalid - validates signature
+ */
+
+function getProvider(version) {
+    return ProviderFactory.get(version);
+}
+
+function validSignatureFailOnInvalid(
+    payload,
+    signature,
+    secret,
+    treshold,
+    version
+) {
+    const { parsed } = parseSignature(signature, version);
+    if (!parsed || parsed.timestamp === 0 || parsed.sig === null) {
+        throw new Error({
+            message: `Unable to parse signature ${signature} for version ${version}`,
+        });
+    }
+
+    const provider = getProvider(version);
+    const expectedSignature = provider.compute(
+        parsed.timestamp + '.' + payload,
+        secret
+    );
+
+    if (signature !== expectedSignature) {
+        throw new Error({
+            message: `Unable to validate signature ${signature}. Does not match for version ${version}`,
+        });
+    }
+    
+    const timestampTimeout = Math.floor(Date.now() / 1000) - parsed.timestamp;
+    if (timestampTimeout > 0 && timestampTimeout > treshold) {
+        throw new Error({
+            message: `Unable to validate signature ${signature}. Signature age is out of allowed treshold ${treshold}`,
+        });
+    }
+
+    return true;
+}
+
+function parseSignature(signature, version) {
+    if (typeof signature !== 'string') {
+        return null;
+    }
+    
+    return signature.split(',').reduce(
+      (details, item) => {
+          const kv = item.split('=');
+    
+          if (kv[0] === 'timestamp') {
+            details.timestamp = kv[1];
+          }
+    
+          if (kv[0] === version) {
+            details.sig = kv[1];
+          }
+    
+          return details;
+        },
+        {
+          timestamp: 0,
+          sig: null,
+        }
+    );   
+}
+
+module.exports = new SignerValidator;
