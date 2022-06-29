@@ -16,6 +16,12 @@ class SignerValidator {
      * Responds with multisignature string
     */
     sign(payload, secret, options) {
+      if (typeof payload === 'object') {
+        payload = JSON.stringify(payload);
+      } else if (typeof payload !== 'string') {
+        throw new Error(`Unable to sign payload. JSON or raw string reuired ${v}`);
+      }
+
       if (!options || !options.versions) {
         console.log(`Using default crypto provider for ${OPTIONS.DEFAULT_VERSION} version`)
       }
@@ -27,9 +33,7 @@ class SignerValidator {
       versions.forEach(v => {
         const provider = getProvider(v);
         if (!provider) {
-            throw new Error({
-                message: `Unable to load crypto provider for version ${v}`,
-            });
+            throw new Error(`Unable to load crypto provider for version ${v}`);
         }
 
         const hash = provider.compute(
@@ -64,7 +68,7 @@ class SignerValidator {
         payload,
         signature,
         secret,
-        options.treshold,
+        options.treshold || OPTIONS.DEFAULT_TRESHOLD,
         options.version,
       )
 
@@ -91,11 +95,9 @@ function validSignatureFailOnInvalid(
     treshold,
     version
 ) {
-    const { parsed } = parseSignature(signature, version);
+    const parsed = parseSignature(signature, version);
     if (!parsed || parsed.timestamp === 0 || parsed.sig === null) {
-        throw new Error({
-            message: `Unable to parse signature ${signature} for version ${version}`,
-        });
+        throw new Error(`Unable to parse signature ${signature} for version ${version}`);
     }
 
     const provider = getProvider(version);
@@ -104,17 +106,13 @@ function validSignatureFailOnInvalid(
         secret
     );
 
-    if (signature !== expectedSignature) {
-        throw new Error({
-            message: `Unable to validate signature ${signature}. Does not match for version ${version}`,
-        });
+    if (parsed.sig !== expectedSignature) {
+        throw new Error(`Unable to validate signature ${signature}. Does not match for version ${version}`);
     }
     
     const timestampTimeout = Math.floor(Date.now() / 1000) - parsed.timestamp;
-    if (timestampTimeout > 0 && timestampTimeout > treshold) {
-        throw new Error({
-            message: `Unable to validate signature ${signature}. Signature age is out of allowed treshold ${treshold}`,
-        });
+    if (timestampTimeout > 0 && timestampTimeout >= treshold) {
+        throw new Error(`Unable to validate signature ${signature}. Signature age is out of allowed treshold ${treshold} seconds`);
     }
 
     return true;

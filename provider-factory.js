@@ -3,7 +3,7 @@ const { HmacSha256Provider } = require('./hmac-sha256-provider');
 class ProviderFactory {
     constructor() {
         // Add providers
-        hmacSha256Provider = null; // v0
+        this.hmacSha256Provider = null; // v0
     }
 
     get(version) {
@@ -14,7 +14,7 @@ class ProviderFactory {
                 }
                 return this.hmacSha256Provider;
             default:
-                return new Error('Provider type not supported');
+                throw new Error('Provider type not supported');
         }
     }
 }
